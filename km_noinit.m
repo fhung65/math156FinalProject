@@ -8,23 +8,12 @@
 %  C - D-by-K matrix with the learned cluster centroids.
 %  labels - Length N vector with integer (1, 2, ..., K) class assignments.
 
-
-function [C, labels] = km(A, K, maxiter, init_points)
+function [C, labels] = km_noinit(A, K, maxiter)
 
 labels = randi([1,K], size(A, 2), 1);
 old_labels = labels;
-
-C = init_points;
+C = zeros(size(A,1), K);
 dist = zeros(1,K);
-
-for l = 1:size(A, 2)
-    for k = 1:K
-        dist(k) = norm(A(:,l)-C(:,k));
-    end
-    [temp, labels(l)] = min(dist);
-end
-
-
 for i = 1:maxiter
     for j=1:K
         C(:,j) = mean(A(:,labels==j), 2);    
@@ -43,7 +32,7 @@ for i = 1:maxiter
     end
     
     old_labels = labels;
-    fprintf('iter %i\n',i);
+    fprintf('iter %i',i);
 end
 
 

@@ -1,11 +1,14 @@
 load('Indian_pines_gt.mat')
+load('Indian_pines_corrected.mat')
 
 
 
 data = reshape(indian_pines_corrected, 145*145, 200);
 
+
+
 %% Adding location feature
-lambda = 30;
+lambda = 200;
 b = [1:145]';
 temp = repmat(b, 1, 145);
 a = reshape(temp', 145*145, 1);%x coord
@@ -42,7 +45,7 @@ end
 %initMeans = [initMeans; reshape(lastMean, 1, 202)];
 %%
 [C, labels] = km(data', 17, 1000, initMeans');
-
+[C, labels] = km_noinit(data', 17, 1000);
 
 
 

@@ -1,9 +1,15 @@
+%% THIS FILE WAS USED TO GENERATE THE FIRST SET OF BOOSTED results
+% ONLY 12 clusters in the end were generated
+% Others converged??????
+
+
+
 load('Indian_pines_gt.mat')
 load('Indian_pines_corrected.mat')
 data = reshape(indian_pines_corrected, 145*145, 200);
 
 %% Adding location feature
-lambda = 45;
+lambda = 60;
 b = [1:145]';
 temp = repmat(b, 1, 145);
 a = reshape(temp', 145*145, 1);%x coord
@@ -14,34 +20,32 @@ c = [a,b];
 data=  [data, c*lambda];
 data2 = data(:,1:200);
 
-%% Generating initial points
-M = 36;
+%% 
 ipc = indian_pines_corrected;
 % sampleRange = 13*[1:10]; % 145/5 = 29
-init_gap = 145/(sqrt(M)+1);
-sampleRange = init_gap*[1:sqrt(M)]; % 145/5 = 29
+sampleRange = 29*[1:4]; % 145/5 = 29
 % sampleY = repmat(sampleRange', 10, 1);
-sampleY = repmat(sampleRange', sqrt(M), 1);
+sampleY = repmat(sampleRange', 4, 1);
 
 
 % sampleX = reshape(repmat(sampleRange', 1, 10)', 100, 1);
-sampleX = reshape(repmat(sampleRange', 1, sqrt(M))', M, 1);
-samplePoints = round([sampleY, sampleX]);
+sampleX = reshape(repmat(sampleRange', 1, 4)', 16, 1);
+samplePoints = [sampleY, sampleX];
 
 
-initMeans = zeros(M,202);
+initMeans = zeros(16,202);
 
-% %17th point
-% pt = [randi(145), randi(145)];
-% rngY = [pt(1)-2:pt(1)+2];
-% rngX = [pt(2)-2:pt(2)+2];
-% samples = reshape(ipc(rngY,rngX,:), 25,200);
-% avg = mean(samples,1);
-% initMeans(17,:) = [avg, lambda*pt(2), lambda*pt(1)];
+%17th point
+pt = [randi(145), randi(145)];
+rngY = [pt(1)-2:pt(1)+2];
+rngX = [pt(2)-2:pt(2)+2];
+samples = reshape(ipc(rngY,rngX,:), 25,200);
+avg = mean(samples,1);
+initMeans(17,:) = [avg, lambda*pt(2), lambda*pt(1)];
 
 
 % for i = 1:100
-for i=1:M
+for i=1:16
     pt = samplePoints(i,:);
     rngY = [pt(1)-2:pt(1)+2];
     rngX = [pt(2)-2:pt(2)+2];
@@ -52,7 +56,7 @@ end
 
 
 
-
+[C, labels] = km(data', 16, 1000, initMeans');
 
 %% Using a lot of cluster centers first, then cluster the cluster centers
 [C, labels] = km(data', 100, 1000, initMeans');
@@ -87,27 +91,27 @@ labels3 = labels2(labels);
 
 
 %%
-% temp_data = reshape(data2, 145, 145, 200);
-% conv_data = zeros(145, 145, 200);
-% a = zeros(145, 145);
-% a(1:2,1:2) = 1/4;
-% A = fft2(a);
-% for i=1:200
-%     conv_data(:,:,i) = ifft2(fft2(temp_data(:,:,i)).*A);
-% end
+temp_data = reshape(data2, 145, 145, 200);
+conv_data = zeros(145, 145, 200);
+a = zeros(145, 145);
+a(1:2,1:2) = 1/4;
+A = fft2(a);
+for i=1:200
+    conv_data(:,:,i) = ifft2(fft2(temp_data(:,:,i)).*A);
+end
+
+% One 
+% conv_data=reshape(conv_data, 145*145, 200);
+% or the other, with position data
+conv_data = [reshape(conv_data, 145*145, 200), c*lambda];
+
+
+[C, labels] = km(conv_data', 17, 1000, initMeans');
 % 
-% % One 
-% % conv_data=reshape(conv_data, 145*145, 200);
-% % or the other, with position data
-% conv_data = [reshape(conv_data, 145*145, 200), c*lambda];
-% 
-% 
-% [C, labels] = km(conv_data', 17, 1000, initMeans');
-% % 
-% % idx = 1:100;
-% % sidx = randsample(idx, 21);
-% % [C2, labels2] = km(C, 21, 100, C(:,sidx));
-% % labels3 = labels2(labels);
+% idx = 1:100;
+% sidx = randsample(idx, 21);
+% [C2, labels2] = km(C, 21, 100, C(:,sidx));
+% labels3 = labels2(labels);
 
 
 
@@ -120,7 +124,6 @@ imagesc(reshape(princ_data(:,:,2), 145, 145))
 
 
 %% Boosting clustering
-
 
 temp_data = reshape(data2, 145, 145, 200);
 conv_data = zeros(145, 145, 200);
@@ -136,14 +139,14 @@ end
 conv_data_pos = [reshape(conv_data, 145*145, 200), data(:,end-1:end)];
 
 
-K = 36;
+K = 17;
 results = zeros(size(conv_data_pos, 1), 1);
 black_vec = ones(202, 1)*-1000; % size should be 202x1 if position data is used
 black_list = false(size(conv_data_pos, 1), 1);
 % The first iterations
 % C is D by K
 [C, labels] = km(conv_data_pos', K, 1000, initMeans');
-variance = zeros(K, 1);
+variance = zeros(17, 1);
 for j=1:K
 %    count = sum(labels==j);
 %     temp = conv_data(labels==j, :) - repmat(C(:,j)',count, 1);
@@ -165,16 +168,13 @@ disp('here2')
 black_list(labels==min_idx)=true;
 %%
 % The next K-1 iterations
-for i=1:35
+for i=1:16
     % Find the smallest variance
     initMeans = zeros(K-i+1, 202); % USE 202 if using pos data!
     initMeans(1,:) = black_vec; % This so that we know which black cluster is
-    % Initialize the other initial means
-    % By choosing equally spaced in
-    available_idx = find(black_list==0);
-    gap = round(size(available_idx,1)/size(initMeans,1));
-    disp(sprintf('gap size %i', gap))
-    initMeans_idx = gap*(1:(K-i));
+    % TODO: initialize the other initial means
+    
+    initMeans_idx = randsample(find(black_list==0), K-i);
     initMeans(2:end,:) = conv_data_pos(initMeans_idx, :);
     
     [C, labels] = km(conv_data_pos', K-i+1, 1000, initMeans');
